@@ -3,6 +3,7 @@ import torch
 from sklearn.metrics import auc, roc_curve, precision_recall_curve
 import numpy as np
 
+
 def test(dataloader, model, args, viz, device):
     with torch.no_grad():
         model.eval()
@@ -12,7 +13,8 @@ def test(dataloader, model, args, viz, device):
             input = input.to(device)
             input = input.permute(0, 2, 1, 3)
             score_abnormal, score_normal, feat_select_abn, feat_select_normal, feat_abn_bottom, feat_select_normal_bottom, logits, \
-            scores_nor_bottom, scores_nor_abn_bag, feat_magnitudes = model(inputs=input)
+                scores_nor_bottom, scores_nor_abn_bag, feat_magnitudes = model(
+                    inputs=input)
             logits = torch.squeeze(logits, 1)
             logits = torch.mean(logits, 0)
             sig = logits
@@ -31,14 +33,26 @@ def test(dataloader, model, args, viz, device):
         np.save('tpr.npy', tpr)
         rec_auc = auc(fpr, tpr)
         print('auc : ' + str(rec_auc))
+        print("AUC Treshold: ", threshold[np.argmax(tpr-fpr)])
+
+        acc = cal_acc_treshold(pred, list(gt))
+        print('Accuracy: ', acc)
 
         precision, recall, th = precision_recall_curve(list(gt), pred)
         pr_auc = auc(recall, precision)
         np.save('precision.npy', precision)
         np.save('recall.npy', recall)
-        viz.plot_lines('pr_auc', pr_auc)
-        viz.plot_lines('auc', rec_auc)
-        viz.lines('scores', pred)
-        viz.lines('roc', tpr, fpr)
+        # viz.plot_lines('pr_auc', pr_auc)
+        # viz.plot_lines('auc', rec_auc)
+        # viz.lines('scores', pred)
+        # viz.lines('roc', tpr, fpr)
         return rec_auc
 
+
+def cal_acc_treshold(scores, labels, threshold=0.5):
+    scores = np.array(
+        [1 if score > threshold else 0 for score in scores], dtype=float)
+    labelsnp = np.array(labels)
+    tp = np.sum(scores*(labelsnp))
+    tn = np.sum((1 - scores) * (1 - labelsnp))
+    return (tp + tn) / len(labelsnp)
